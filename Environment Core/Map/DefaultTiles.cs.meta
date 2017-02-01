@@ -1,0 +1,49 @@
+fileFormatVersion: 2
+guid: 17c166d35beca8c43ae5ead7cb39064c
+timeCreated: 1430365381
+licenseType: Free
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences:
+  - error_error: {fileID: 189416, guid: 6161c147606594331a5141509eb54dca, type: 2}
+  - detail_grass: {fileID: 168104, guid: 08b59fa173b9b4b78ad014f8f480d009, type: 2}
+  - detail_rubble: {fileID: 111078, guid: dab1ae852379249ac93f8a3f8a63075c, type: 2}
+  - floor_path: {fileID: 157866, guid: c614886139c12fc41a6a284c3e98bde8, type: 2}
+  - capt_hub: {fileID: 166746, guid: d2ae9b88dea3343e1bcf6d6b01275a55, type: 2}
+  - mb_hub: {fileID: 122032, guid: a295f44b886a849c2b83363452946480, type: 2}
+  - camp_floor: {fileID: 126572, guid: 747ea151451c84789947b9dc65598737, type: 2}
+  - camp_chest: {fileID: 136358, guid: 473d15c51fe434849b55f8b9163781ce, type: 2}
+  - camp_turret: {fileID: 137766, guid: 0a77e4a456b3142469e30df8c2556bdd, type: 2}
+  - capt_connector: {fileID: 135816, guid: 723fa8c8960604cd4a32fbf2cefe69b5, type: 2}
+  - capt_corner: {fileID: 167932, guid: 38cd6751820404cd292b4e3dd4201c6f, type: 2}
+  - capt_cross: {fileID: 167932, guid: 9b23d3705dbb849a498061f238cefcda, type: 2}
+  - capt_endcap: {fileID: 130708, guid: e3738117e1ea94874bc0923b65d4fc73, type: 2}
+  - capt_single: {fileID: 164280, guid: 96ff92dad34f646cb886aa8cb0fe84e3, type: 2}
+  - capt_single_alt: {fileID: 122032, guid: e99a6ad9236edcd4e83c72b7e60ad270, type: 2}
+  - capt_tee: {fileID: 149322, guid: 09e687ab733e4483ca0710fb0fcc8286, type: 2}
+  - capt_floor: {fileID: 157866, guid: 7f2215e2029c3754d85af4dafb4cd86b, type: 2}
+  - neut_connector: {fileID: 105540, guid: 49f6a37283676452b8f399e4bf221a7b, type: 2}
+  - neut_connector_alt: {fileID: 170812, guid: 395caead6d0ac47daad7c679b5c68e3f, type: 2}
+  - neut_connector_dec: {fileID: 117380, guid: 89ff8a036a17842cb8660b8ab674b3b2, type: 2}
+  - neut_corner: {fileID: 100912, guid: e6c3918d6fbda451aad2e6e9993a50de, type: 2}
+  - neut_corner_alt: {fileID: 191538, guid: be78846519543444bbafce78ec762bf8, type: 2}
+  - neut_cross: {fileID: 159586, guid: 85e3bf0f5619141168ef75a4a659bb9d, type: 2}
+  - neut_endcap: {fileID: 159440, guid: 0e968be3572d74391aeb910dec17b8c5, type: 2}
+  - neut_endcap_alt: {fileID: 107460, guid: 0e829cf4822e24268aed4788c543df50, type: 2}
+  - neut_single: {fileID: 179154, guid: 6ffe08271f6674e18b673140cb66cd64, type: 2}
+  - neut_single_alt: {fileID: 163236, guid: 949562a09be6e41f3924a10fbb21c844, type: 2}
+  - neut_tee: {fileID: 176844, guid: 6682faef00bb2488ca037232ad569b27, type: 2}
+  - neut_floor: {fileID: 126572, guid: 4077be2159e0c4d03ad909f10b400838, type: 2}
+  - wild_connector: {fileID: 167308, guid: 7a2013e7d5c1e4c1ebd2b7b03f35287c, type: 2}
+  - wild_corner: {fileID: 139324, guid: 2052bb5c1c68c4a9b94acedcbecf4a25, type: 2}
+  - wild_cross: {fileID: 167308, guid: 7a2013e7d5c1e4c1ebd2b7b03f35287c, type: 2}
+  - wild_single_dec: {fileID: 141550, guid: 65d6bd329687c428897eca3d22e2d7bc, type: 2}
+  - wild_endcap: {fileID: 172094, guid: 490a735b1347c4838b8e43cc27ffa64c, type: 2}
+  - wild_single: {fileID: 120606, guid: 96e60a90c1f8b4482af1e74f54db2802, type: 2}
+  - wild_tee: {fileID: 104744, guid: c45bf359e4fff4bd2a5bce2bcc63cb01, type: 2}
+  - wild_floor: {fileID: 157866, guid: 004b243fccd23de4697f2bb5d8d32c4a, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

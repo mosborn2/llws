@@ -1,0 +1,383 @@
+﻿using UnityEngine;
+using System.Collections;
+#pragma warning disable 0414
+
+public class Player : Entity
+{	
+	//-----------------------------------------------------------------------------------------------------------------------------
+	//ATTRIBUTES
+	//-----------------------------------------------------------------------------------------------------------------------------
+	public int playerID = -1;											//player ID in the scene. this is important for many systems
+	[SerializeField] private float cameraHeight; 						//camera distance from player
+	[SerializeField] private Color color; 								//player color	
+	[SerializeField] private TrailRenderer trail; 						//player Trail	
+
+    public bool resKeyDown = false;										//dev tool
+    public bool pickupKeyDown = false;									//dev tool
+
+	[SerializeField] private Camera playerCamera; 						//the camera focused on this player	
+	public InputController gamepad; 											//the gamepad we'll be using
+	private Animator anim;
+	private Vector2 controllerState;
+	private Vector2 controllerStateR;									//Right sticks state
+	private Vector2 oldControllerStateR;								//used when right stick is not being used
+	private FillScript healthBar;										//health bar on the GUI
+	public HUD hud;														//HUD Reference
+	public GameObject weapon;											//weapon reference
+	public GameObject turrit;
+	public GameObject projectile;										//object for shooting
+	public CombatSlice cSlice;											//combat slice
+	private bool meleeCombat = true;									//true is melee, false is ranged
+	public EntityStats stats;
+  PlayerAudio audio;                              //ref to audio source script
+	//NONE OF THESE SEEM TO BE USED?
+	//[SerializeField] private float walkSpeed = 0.15f;					//player walk speed
+	//[SerializeField] private float turnSpeed = 0.1f; 					//player turn speed
+	//Rect FULLSCREEN =   new Rect( 0.0f, 0.0f, 1.0f, 1.0f );	
+	//public int tileCount = 0;											//MAY NOT BE ACTUALLY USED
+
+	//-----------------------------------------------------------------------------------------------------------------------------
+	//viewport rectangles used to set cameras (xPosition, yPosition, width, height)
+	//-----------------------------------------------------------------------------------------------------------------------------
+
+	Rect L_HALF =       new Rect( 0.0f, 0.0f, 0.5f, 1.0f );
+	Rect R_HALF =       new Rect( 0.5f, 0.0f, 0.5f, 1.0f );	
+	Rect T_L_QUARTER =  new Rect( 0.0f, 0.5f, 0.5f, 0.5f );
+	Rect T_R_QUARTER =  new Rect( 0.5f, 0.5f, 0.5f, 0.5f );
+	Rect B_L_QUARTER =  new Rect( 0.0f, 0.0f, 0.5f, 0.5f );
+	Rect B_R_QUARTER =  new Rect( 0.5f, 0.0f, 0.5f, 0.5f );
+	//-----------------------------------------------------------------------------------------------------------------------------
+
+	private void move(Vector3 direction) { this.transform.Translate(direction * stats.speed * Time.deltaTime); }
+	public int getTilesOwned()           { return stats.numTilesOwned; }
+	public void addOwnedTile()           { stats.numTilesOwned++; }
+	public void subdOwnedTile()          { stats.numTilesOwned--; }
+	public EntityStats getStats()        {return stats;}
+
+    new public void Start()
+    {
+    	playerCamera.enabled = false;
+		anim = this.transform.GetComponent<Animator>();
+		controllerState = Vector2.zero;
+        
+		stats = new EntityStats();
+		stats.statsInit();
+		cSlice = this.gameObject.AddComponent<CombatSlice>();
+		cSlice.rangedAttackLength = 1.0f;
+		respawnPoint = transform.position;
+		oldControllerStateR.x = 0;
+		oldControllerStateR.y = 1;
+    audio = this.GetComponentInParent<PlayerAudio>();
+    }
+
+	void Update () 
+	{
+		handleInput(); //handle all input
+		debugInput();  //handle special DEBUG related input
+	}
+
+	void checkPlayerIDs()
+	{
+		Player [] pls = overlord.requestPlayerList();
+		int temp = 0;
+		foreach(Player p in pls)
+		{
+			if (p.playerID == playerID) temp++;
+		}
+		if (temp > 1) Debug.LogError("Game-Breaking Error: Player ID Conflict! more than one player has ID " + playerID);
+	}
+
+	//Called from PlayerMaster to init state information
+	public void init(int playerNumber, int totalPlayers, Color playerColor, FillScript healthBar, Overlord o)
+	{
+        this.overlord     = o;
+        this.healthBar    = healthBar;
+        this.color        = playerColor;
+        this.stats        = new EntityStats();
+		this.stats.hud    = hud;
+		this.hud.playerID = playerNumber;											//Allows for items to be added in hud and stuff
+        this.hud.player   = this;        
+		overlord.resourceCore.itemSlice.gearSpawnedPlayer(this);  					//testing gearing  
+        playerColor.a = 1.0f; 														//Healthbar color - Werid issues when converting from Color to Color32
+        trail.material.color = playerColor;
+        stats.recalculateStats();
+        this.stats.health = this.stats.maxHealth;
+		healthBar.healthcolor.color = playerColor;
+        this.stats.hud.updateHealthbar();
+		cSlice.init(stats, this, anim, healthBar);
+		checkPlayerIDs();
+
+		//playerMesh.GetComponent<Renderer>().material.color = c; 					//Set the color. Don't delete, we will need this
+        cameraSetup(totalPlayers, playerNumber); 									//initialize the camera based on the count of players
+		switch(playerNumber)														//Set the gamepad
+		{
+
+			case 1: gamepad = new InputController(ControllerNumber.ONE);   break;
+			case 2: gamepad = new InputController(ControllerNumber.TWO);   break;
+			case 3: gamepad = new InputController(ControllerNumber.THREE); break;
+			case 4: gamepad = new InputController(ControllerNumber.FOUR);  break;
+		}
+
+	}
+
+	private void cameraSetup(int totalPlayers, int playerNumber)
+	{
+		switch(totalPlayers)
+		{
+			case 1: 
+				playerCamera.rect = new Rect(0,0,1,1);
+				break;
+			case 2: 
+				if(playerNumber == 1)		playerCamera.rect = L_HALF;
+				else 						playerCamera.rect = R_HALF;
+				break;
+			case 3: 
+				Debug.LogError("3-way split screen was requested, but is not implemented!");
+				break;
+			case 4: 
+				if(playerNumber == 1)		playerCamera.rect = T_L_QUARTER;
+				else if(playerNumber == 2)	playerCamera.rect = T_R_QUARTER;
+				else if(playerNumber == 3)	playerCamera.rect = B_L_QUARTER;
+				else 						playerCamera.rect = B_R_QUARTER;
+				break;
+		}
+		playerCamera.enabled = true;
+	}
+
+    public new void respawn()
+    {
+        Debug.Log("Player respawning");
+        overlord.resourceCore.itemSlice.gearSpawnedPlayer(this.GetComponentInChildren<Player>());
+        overlord.actorCore.playerSlice.respawnPlayer(this);
+    }
+
+	public Color getColor()
+	{
+		//return playerMesh.GetComponent<Renderer>().material.color; Don't delete, we will need
+		return color;
+	}
+
+	private void debugInput()
+	{
+		if (Input.GetKeyDown(KeyCode.Backspace))
+		{
+			stats.resources += 1000;
+			hud.updateResourceText();
+		}
+		if (Input.GetKeyDown(KeyCode.Q)) pickupKeyDown = true;      //pickup key pressed
+		if (Input.GetKeyUp(KeyCode.Q)) pickupKeyDown = false;		//pickup key released
+		if (Input.GetKeyDown(KeyCode.E)) resKeyDown = true;     		//scrap for cash key down
+		if (Input.GetKeyUp(KeyCode.E)) resKeyDown = false;			//scrap for cash key released
+<<<<<<< origin/master
+		if (Input.GetKeyDown(KeyCode.U))
+=======
+        
+		/*if (Input.GetKeyDown(KeyCode.U))
+>>>>>>> local
+		{
+			if (stats.resources > 100)
+			{
+				stats.resources -= 100;
+				hud.updateResourceText();
+				cSlice.shoot(projectile, this.gameObject.transform.position, this.gameObject.transform.forward, this.gameObject.transform.rotation, true);	//shoot something
+			}
+			else Debug.Log ("100 resources needed to shoot");
+		}
+	}
+
+	//TODO rework to use the combatSlice
+	private void handleInput()
+	{	
+		//get controller state
+		controllerState.x = gamepad.Move_X();
+		controllerState.y = gamepad.Move_Y();
+		controllerStateR.x = gamepad.Aim_X ();
+		controllerStateR.y = gamepad.Aim_Y ();
+
+		//get keyboard state
+		bool attacking = false;
+		if(Input.GetKey(KeyCode.W)) controllerState.y =  1;
+		if(Input.GetKey(KeyCode.A)) controllerState.x = -1;
+		if(Input.GetKey(KeyCode.S)) controllerState.y = -1;
+		if(Input.GetKey(KeyCode.D)) controllerState.x =  1;
+		if(Input.GetKey(KeyCode.Space)) cSlice.attack();
+			//attacking = true; } //anim.SetBool("Attack", true); }
+		if(Input.GetKey (KeyCode.UpArrow)) controllerStateR.y = 1;
+		if(Input.GetKey (KeyCode.DownArrow)) controllerStateR.y = -1;
+		if(Input.GetKey (KeyCode.RightArrow)) controllerStateR.x = 1;
+		if(Input.GetKey (KeyCode.LeftArrow)) controllerStateR.x = -1;
+
+		controllerState.Normalize(); //make sure our vectors don't get larger than 1
+		controllerStateR.Normalize ();
+
+		//Handle Right Stick Input
+		if (controllerStateR.x > 0.2 || controllerStateR.x < -0.2 || controllerStateR.y > 0.2 || controllerStateR.y < -0.2) {
+			//need to edit the y rotation some ammount.
+			Vector3 controllerStateR2 = new Vector3 (controllerStateR.x, 0, controllerStateR.y);
+			this.transform.LookAt (controllerStateR2 + this.transform.position, Vector3.up);
+			oldControllerStateR = controllerStateR;
+		} else {
+			controllerStateR = oldControllerStateR;
+		}
+
+		//Handle Left Stick Input
+		if (controllerState.x > 0.2 || controllerState.x < -0.2 || controllerState.y > 0.2 || controllerState.y < -0.2) {
+			float stickAngle = Vector2.Angle (controllerState, controllerStateR);
+			Vector3 cross = Vector3.Cross(controllerState, controllerStateR);
+			if(cross.z <0) stickAngle = -stickAngle;
+			if (stickAngle >= -90 && stickAngle <= 90) {
+				anim.SetBool ("WalkForward", true);
+				anim.SetBool ("WalkBack", false);
+				anim.SetFloat("Angle", stickAngle);
+			}else{
+				anim.SetBool ("WalkForward", false);
+				anim.SetBool ("WalkBack", true);
+				if(stickAngle < 0){
+					anim.SetFloat("Angle", -1*(180 +stickAngle));
+				} else{
+					anim.SetFloat("Angle", 180 - stickAngle);
+				}
+			}
+			//below is the code that transforms the player if they are moving
+			if(stats.topSpeed > stats.currentSpeed){
+				stats.currentSpeed = stats.currentSpeed + stats.acceleration;
+				if(stats.currentSpeed > stats.topSpeed){
+					stats.currentSpeed = stats.topSpeed;
+				}
+			}
+		} else {
+			//goto idle animation
+			anim.SetBool("WalkForward", false);
+			anim.SetBool("WalkBack", false);
+			anim.SetFloat("Angle", 0);
+			//reduce speed if left sitck isnt used
+			if(stats.currentSpeed > 0){
+				stats.currentSpeed = stats.currentSpeed - stats.acceleration;
+				if(stats.currentSpeed < 0){
+					stats.currentSpeed = 0;
+				}
+			}
+		}
+
+        //Vector3 tempPos = this.transform.position + new Vector3(stats.currentSpeed * controllerState.x * Time.deltaTime, 0, stats.currentSpeed * controllerState.y * Time.deltaTime);
+		Vector3 tempPos = this.transform.position;
+		this.gameObject.GetComponent<Rigidbody>().AddForce(new Vector3(stats.currentSpeed * controllerState.x * Time.deltaTime, 0, stats.currentSpeed * controllerState.y * Time.deltaTime)*500f);
+
+        if(tempPos.x < 1)
+        {
+            tempPos.x = 1;
+        } else if (tempPos.x > 68)
+        {
+            tempPos.x = 68;
+        }
+
+        if (tempPos.z < 1)
+        {
+            tempPos.z = 1;
+        }
+        else if (tempPos.z > 68)
+        {
+            tempPos.z = 68;
+        }
+
+        this.transform.position = tempPos;
+
+        /*
+		//Move the player
+		anim.SetFloat("Speed", controllerState.y);
+		anim.SetFloat("Direction", controllerState.x);
+		*/
+
+        /*
+		//Handle turning
+		float rStickX = gamepad.Aim_X();
+		if(controllerState.x > 0.3){
+			//anim.SetFloat("Turn", rStickX, turnSpeed, Time.deltaTime);
+			this.transform.Rotate(Vector3.up * (Time.deltaTime + 5), Space.World);
+		}
+		else if (controllerState.x < -0.3){
+			//anim.SetFloat("Turn", rStickX, turnSpeed, Time.deltaTime);
+			this.transform.Rotate(Vector3.up * (Time.deltaTime + -5), Space.World);
+		}
+		*/
+
+        //Set rotation
+        playerCamera.transform.position = new Vector3(transform.position.x, cameraHeight, transform.position.z - 2);
+		playerCamera.transform.LookAt(transform.position);
+		
+		//TODO Combat controls
+		if(gamepad.R2() > 0.1f || attacking)
+		{
+			//turns attacking to true if R2 is being pressed and there was no attack currently happening
+			cSlice.attack();
+		}
+		if (gamepad.L1())
+		{
+			if (stats.resources > 1000)
+			{
+				GameObject turr = Instantiate(turrit, new Vector3(this.transform.position.x, 5, this.transform.position.z), this.transform.rotation) as GameObject;
+				turr.GetComponent<FlyingTurret>().init(playerID);
+				stats.resources -= 1000;
+			}
+			else Debug.Log ("not enough resources to spawn a turret!!!!!!");
+		}
+		if (gamepad.R1())
+		{
+			if (shooting) return;
+			shooting = true;
+			if (stats.resources > 100 && cSlice.getState() == CombatSlice.combatState.NORMAL)
+			{
+				stats.resources -= 100;
+				hud.updateResourceText();
+				Debug.Log ("shooting for player " + playerID);
+				cSlice.shoot(projectile, this.gameObject.transform.position, this.gameObject.transform.forward, this.gameObject.transform.rotation, false);	//shoot something
+			}
+			else Debug.Log ("100 resources needed to shoot.");
+			shooting = false;
+		}
+		if(gamepad.L2() > 0.1f)
+		{
+			Debug.Log ("L2");
+			cSlice.parry();
+		}
+	}
+
+	bool shooting = false;
+
+	void OnCollisionStay(Collision col)
+	{
+		//player attacks override enemy attacks
+		if(col.gameObject.tag == "Enemy" && cSlice.getState() != CombatSlice.combatState.ATTACK )
+		{
+			FollowTest lame = col.gameObject.GetComponent<FollowTest>();
+			Debug.Log (lame.ToString());
+			CombatSlice cs = lame.getSlice();
+
+			//...but not if the enemy attacked first
+		   if (cs.getState() == CombatSlice.combatState.ATTACK)
+			{
+				EntityStats es = col.gameObject.GetComponent<FollowTest>().stats;
+				float esa = es.attack * 4;
+				cSlice.damage(esa, es);
+			}
+		}
+	}
+
+
+	void OnTriggerEnter(Collider col)
+	{
+		if(col.gameObject.tag == "Weapon")
+        {
+            if (this.cSlice.getState() == CombatSlice.combatState.PARRY && col.GetComponentInParent<CombatSlice>().getState() == CombatSlice.combatState.ATTACK)
+            {
+                //WE JUST PARRIED
+                col.GetComponentInParent<CombatSlice>().parried();
+            }
+			else if (col.GetComponentInParent<CombatSlice>().getState() == CombatSlice.combatState.ATTACK) 
+			{
+				cSlice.damage(col.GetComponentInParent<Player>().stats.attack, col.GetComponentInParent<Player>().stats);
+			}
+			
+		}
+	}
+}
